@@ -6,30 +6,7 @@ See every relation in your Payload project in your terminal.
 npx payload-map
 ```
 
-```
-users
-└─ posts (1 field, join)
-
-pages
-├─ media (2 fields)
-├─ pages (1 field)
-└─ users (1 field)
-
-posts
-├─ media (1 field)
-├─ pages (1 field)
-├─ posts (1 field)
-└─ users (1 field)
-
-search
-└─ posts (1 field)
-
-global:footer
-└─ pages (1 field)
-
-No outgoing relations: media
-5 collections, 1 global, 10 relations
-```
+![payload-map drawing the relations of a demo shop as a tree in the terminal](demo/demo.gif)
 
 No database, no `.env`, no running server. Run one command in your project folder and get a map of how your collections point at each other.
 
@@ -71,6 +48,8 @@ It looks for the config in this order:
 | `--all` | Include collections added by plugins (redirects, forms, search and so on) |
 | `--mermaid` | Print a [Mermaid](https://mermaid.js.org/) diagram instead of a tree |
 | `--json` | Print the raw data as JSON |
+
+Colors are turned off when the output is piped to a file or another command, or when `NO_COLOR` is set.
 
 ### Details
 
@@ -141,6 +120,8 @@ npm install
 npm test
 npm run build
 ```
+
+The GIF above is recorded with [VHS](https://github.com/charmbracelet/vhs) from a generic demo config in `demo/`. After a build, run `vhs demo/demo.tape` from the repo root to record it again.
 
 ## License
 
