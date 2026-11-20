@@ -44,10 +44,12 @@ function pairsFor(source: string, relations: Relation[]): Pair[] {
     .sort((a, b) => b.fields.length - a.fields.length || a.to.localeCompare(b.to))
 }
 
+const plural = (count: number, word: string) => `${count} ${count === 1 ? word : `${word}s`}`
+
 function pairLabel(pair: Pair): string {
   const count = pair.fields.length
   const joins = pair.fields.filter((field) => field.kind === 'join').length
-  const parts = [`${count} ${count === 1 ? 'field' : 'fields'}`]
+  const parts = [plural(count, 'field')]
   if (joins > 0) parts.push(joins === count ? 'join' : `${joins} join`)
   return `${pair.to} ${dim(`(${parts.join(', ')})`)}`
 }
@@ -82,8 +84,9 @@ export function render(data: ExtractResult, options: { details: boolean }): stri
 
   lines.push(
     dim(
-      `${data.collections.length} collections, ${data.globals.length} globals, ` +
-        `${data.relations.length} relations`,
+      `${plural(data.collections.length, 'collection')}, ` +
+        `${plural(data.globals.length, 'global')}, ` +
+        `${plural(data.relations.length, 'relation')}`,
     ),
   )
   return lines.join('\n')
@@ -102,8 +105,7 @@ export function renderMermaid(data: ExtractResult): string {
     nodes.add(source)
     for (const pair of pairsFor(source, data.relations)) {
       nodes.add(pair.to)
-      const count = pair.fields.length
-      const label = `${count} ${count === 1 ? 'field' : 'fields'}`
+      const label = plural(pair.fields.length, 'field')
       // A dotted arrow marks a pair made only of join fields (the reverse side of a relation).
       const allJoins = pair.fields.every((field) => field.kind === 'join')
       const arrow = allJoins ? `-. "${label}" .->` : `-->|"${label}"|`

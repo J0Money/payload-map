@@ -39,7 +39,7 @@ test('lists field paths with --details', () => {
 test('prints globals with their prefix and a summary line', () => {
   const output = plain(data)
   assert.match(output, /global:footer\n└─ pages \(1 field\)/)
-  assert.match(output, /3 collections, 1 globals, 6 relations$/)
+  assert.match(output, /3 collections, 1 global, 6 relations$/)
 })
 
 test('collects collections without outgoing relations on one line', () => {

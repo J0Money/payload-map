@@ -20,8 +20,12 @@
     "relations",
     "mermaid"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "J0Money",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/J0Money/payload-kort.git"
+  },
   "type": "module",
   "dependencies": {
     "tsx": "^4.23.15"
