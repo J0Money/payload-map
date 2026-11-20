@@ -1,0 +1,4 @@
+node_modules
+dist
+.claude/map/
+.claude/settings.local.json
