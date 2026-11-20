@@ -1,9 +1,9 @@
 {
-  "name": "payload-kort",
+  "name": "payload-map",
   "version": "0.1.0",
   "description": "See every relation in your Payload project in your terminal.",
   "bin": {
-    "payload-kort": "dist/cli.js"
+    "payload-map": "dist/cli.js"
   },
   "files": [
     "dist"
@@ -24,7 +24,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/J0Money/payload-kort.git"
+    "url": "git+https://github.com/J0Money/payload-map.git"
   },
   "type": "module",
   "dependencies": {

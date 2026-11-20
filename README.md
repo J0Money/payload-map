@@ -1,9 +1,9 @@
-# payload-kort
+# payload-map
 
 See every relation in your Payload project in your terminal.
 
 ```sh
-npx payload-kort
+npx payload-map
 ```
 
 ```
@@ -35,7 +35,7 @@ No database, no `.env`, no running server. Run one command in your project folde
 
 ## Why
 
-Relations in a Payload config are spread over many files and hidden deep inside tabs, groups, arrays and blocks. In a real project a quick scan of the top-level fields finds only a fraction of them. `payload-kort` walks the whole field tree, so you see all of them.
+Relations in a Payload config are spread over many files and hidden deep inside tabs, groups, arrays and blocks. In a real project a quick scan of the top-level fields finds only a fraction of them. `payload-map` walks the whole field tree, so you see all of them.
 
 It finds:
 
@@ -52,7 +52,7 @@ Payload's own internal `payload-*` collections are left out.
 Run it from the root of your Payload project:
 
 ```sh
-npx payload-kort
+npx payload-map
 ```
 
 It looks for the config in this order:
@@ -96,7 +96,7 @@ Collections added by plugins are hidden as sources by default, so the map shows 
 ### Mermaid
 
 ```sh
-npx payload-kort --mermaid > relations.mmd
+npx payload-map --mermaid > relations.mmd
 ```
 
 GitHub renders Mermaid in Markdown, so you can paste the output into a ` ```mermaid ` block in your own README or docs:
@@ -125,9 +125,9 @@ Dotted arrows are `join` fields.
 
 ## How it works
 
-`payload-kort` imports your config the same way your own code does, in a separate process, and reads the collections, globals and fields from it. It does not start Payload, connect to your database or need your environment variables.
+`payload-map` imports your config the same way your own code does, in a separate process, and reads the collections, globals and fields from it. It does not start Payload, connect to your database or need your environment variables.
 
-> **Note:** importing your config runs your code. Any code at the top level of your config and its imports is executed, just like when you start your app. Only run `payload-kort` on projects you trust.
+> **Note:** importing your config runs your code. Any code at the top level of your config and its imports is executed, just like when you start your app. Only run `payload-map` on projects you trust.
 
 ## Requirements
 
