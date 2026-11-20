@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { stripVTControlCharacters } from 'node:util'
 import {
+  fromSources,
   pointingAt,
   render,
   renderIncoming,
@@ -91,6 +92,11 @@ test('withoutRichText drops relations inside richText fields', () => {
     withoutRichText(withRichText).relations.map((relation) => relation.field),
     ['cover'],
   )
+})
+
+test('fromSources keeps only the named sources and counts only them', () => {
+  const output = plain(fromSources(data, ['pages']))
+  assert.match(output, /^pages\n├─ media \(2 fields\)\n└─ forms \(1 field\)\n\n1 collection, 0 globals, 3 relations$/)
 })
 
 test('renderIncoming lists the sources of one collection, counting "any collection" fields', () => {

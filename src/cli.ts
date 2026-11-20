@@ -6,6 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
+  fromSources,
   pointingAt,
   render,
   renderIncoming,
@@ -20,11 +21,13 @@ const fail = (message: string, code = 1): never => {
   process.exit(code)
 }
 
-// 0. Read the flags. parseArgs (built into Node) handles values like "--to media" and
+// 0. Read the arguments. parseArgs (built into Node) handles values like "--to media" and
 // rejects unknown flags, so a typo such as --detials gives an error instead of being ignored.
-function readFlags() {
+// Words without "--" (positionals) are collection names to show, as in "payload-map pages".
+function readArgs() {
   try {
     return parseArgs({
+      allowPositionals: true,
       options: {
         config: { type: 'string' },
         to: { type: 'string' },
@@ -34,13 +37,13 @@ function readFlags() {
         all: { type: 'boolean' },
         'no-rich-text': { type: 'boolean' },
       },
-    }).values
+    })
   } catch (error) {
     return fail(`${(error as Error).message}\nSee the README for all options.`)
   }
 }
 
-const flags = readFlags()
+const { values: flags, positionals: sources } = readArgs()
 
 // The user's project is the folder the command is run from.
 const projectRoot = process.cwd()
@@ -117,8 +120,18 @@ child.on('close', (code) => {
     )
   }
 
-  let data = flags.all ? result! : withoutPlugins(result!)
+  // A collection named on the command line is shown even if a plugin added it.
+  let data = flags.all || sources.length > 0 ? result! : withoutPlugins(result!)
   if (flags['no-rich-text']) data = withoutRichText(data)
+
+  if (sources.length > 0) {
+    const known = [...result!.collections, ...result!.globals.map((slug) => `global:${slug}`)]
+    const unknown = sources.filter((source) => !known.includes(source))
+    if (unknown.length > 0) {
+      fail(`Unknown collection or global: ${unknown.join(', ')}\nAvailable: ${known.join(', ')}`)
+    }
+    data = fromSources(data, sources)
+  }
 
   // --to narrows everything (tree, --json and --mermaid) to what points at one collection.
   const to = flags.to

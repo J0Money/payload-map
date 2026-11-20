@@ -24,6 +24,17 @@ export function withoutRichText(data: ExtractResult): ExtractResult {
   return { ...data, relations: data.relations.filter((relation) => !relation.richText) }
 }
 
+// Keeps only the named sources (collections, or globals as "global:<slug>") and what they
+// point at. The summary line then counts only these sources.
+export function fromSources(data: ExtractResult, sources: string[]): ExtractResult {
+  return {
+    ...data,
+    collections: data.collections.filter((slug) => sources.includes(slug)),
+    globals: data.globals.filter((slug) => sources.includes(`global:${slug}`)),
+    relations: data.relations.filter((relation) => sources.includes(relation.from)),
+  }
+}
+
 // extract.ts uses "*" for a richText relation that may point at every collection.
 const ANY = '*'
 const nameOf = (slug: string) => (slug === ANY ? 'any collection' : slug)

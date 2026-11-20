@@ -73,6 +73,25 @@ pages
 
 `layout<hero>.image` means: the `image` field inside the `hero` block of the `layout` field.
 
+### One collection
+
+In a big project the full map can fill the screen. Name one or more collections to see only those (globals as `global:<slug>`):
+
+```sh
+npx payload-map pages
+```
+
+```
+pages
+├─ media (2 fields)
+├─ pages (1 field)
+└─ users (1 field)
+
+1 collection, 0 globals, 4 relations
+```
+
+A collection you name is shown even when a plugin added it, without `--all`.
+
 ### Who points at a collection?
 
 Before you rename or delete a collection, you want to know what depends on it. `--to` turns the map around:
@@ -95,7 +114,7 @@ media is pointed at by
 2 sources, 6 fields
 ```
 
-Fields that may point at any collection are counted too, because they can point at this one. `--to` also works with `--json` and `--mermaid`.
+Fields that may point at any collection are counted too, because they can point at this one. `--to` also works with `--json` and `--mermaid`, and together with a collection name: `npx payload-map pages --to media` shows only the fields in `pages` that point at `media`.
 
 ### Rich text
 

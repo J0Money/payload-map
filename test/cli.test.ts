@@ -99,6 +99,23 @@ test('--to keeps only what points at one collection, including "any collection" 
   )
 })
 
+test('shows only the collections named on the command line, plugin collections too', () => {
+  const data = JSON.parse(runCli('--config', 'blog.config.ts', '--json', 'redirects', 'global:footer').stdout)
+  assert.deepEqual(data.collections, ['redirects'])
+  assert.deepEqual(data.globals, ['footer'])
+  assert.deepEqual(
+    data.relations.map((relation: { from: string }) => relation.from),
+    ['redirects', 'global:footer'],
+  )
+})
+
+test('reports an unknown collection name', () => {
+  const { code, stderr } = runCli('--config', 'blog.config.ts', 'nope')
+  assert.equal(code, 1)
+  assert.match(stderr, /Unknown collection or global: nope/)
+  assert.match(stderr, /global:footer/)
+})
+
 test('reports an unknown collection for --to', () => {
   const { code, stderr } = runCli('--config', 'blog.config.ts', '--to', 'nope')
   assert.equal(code, 1)
