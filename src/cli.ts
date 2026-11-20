@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -50,8 +51,10 @@ const configPath = findConfig()
 // 2. Resolve tsx from THIS package, so the user's project does not need it installed.
 const tsxCli = createRequire(import.meta.url).resolve('tsx/cli')
 
-// extract.ts lives next to this file, wherever the user runs the command from.
-const extractScript = fileURLToPath(new URL('./extract.ts', import.meta.url))
+// extract lives next to this file, wherever the user runs the command from. It has the
+// same extension as this file: .ts when run from src, .js when run from the built dist.
+const thisFile = fileURLToPath(import.meta.url)
+const extractScript = path.join(path.dirname(thisFile), `extract${path.extname(thisFile)}`)
 
 // Without the project tsconfig the "@/" alias cannot be resolved.
 const tsconfig = path.join(projectRoot, 'tsconfig.json')

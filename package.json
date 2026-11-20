@@ -1,18 +1,33 @@
 {
   "name": "payload-kort",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "See every relation in your Payload project in your terminal.",
+  "bin": {
+    "payload-kort": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
     "test": "tsx --test test/*.test.ts"
   },
-  "keywords": [],
+  "keywords": [
+    "payload",
+    "payloadcms",
+    "cli",
+    "relations",
+    "mermaid"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",
+  "dependencies": {
+    "tsx": "^4.23.15"
+  },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
