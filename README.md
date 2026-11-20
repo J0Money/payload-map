@@ -1,5 +1,7 @@
 # payload-map
 
+[![CI](https://github.com/J0Money/payload-map/actions/workflows/ci.yml/badge.svg)](https://github.com/J0Money/payload-map/actions/workflows/ci.yml)
+
 See every relation in your Payload project in your terminal.
 
 ```sh
@@ -128,7 +130,7 @@ Dotted arrows are `join` fields.
 ## Requirements
 
 - A Payload 3 project. Tested on Payload 3.88.0, 3.92.1 and 3.94.0.
-- Node.js. Tested on Node 24.
+- Node.js 22 or newer. Tested on Node 22 and 24 on Linux, Windows and macOS.
 
 ## Development
 
