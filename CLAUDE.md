@@ -16,7 +16,7 @@ Terminal CLI that reads a Payload CMS (v3) config and draws how its collections 
 - TypeScript is run with `tsx`. Config path must go through `pathToFileURL(...)` before `import()` (Windows paths).
 - `tsx` is a runtime dependency, not a dev dependency: the published `dist/extract.js` still needs it to load the user's `payload.config.ts`.
 - Build: `tsc` compiles `src` to `dist` (`npm run build`, runs automatically on `npm pack`/`npm publish`). Source imports use `.ts` extensions, and `rewriteRelativeImportExtensions` turns them into `.js`. `cli.ts` picks `extract.ts` or `extract.js` by its own extension, so it works from both `src` and `dist`.
-- Loading the config does not need Payload to start, a database or a `.env`. Tested on Payload 3.88.0 and 3.92.1.
+- Loading the config does not need Payload to start, a database or a `.env`. Tested on Payload 3.88.0, 3.92.1 and 3.94.0 (the last one in the test suite).
 - Loading a config runs the user's code (its imports). The README states this.
 - stdout from the helper is JSON only. Messages and errors go to stderr.
 
@@ -59,8 +59,10 @@ Relations inside a richText field get `"richText": true` (the key is left out ot
 ## Tests
 
 - `npm test` (node:test via tsx). `test/cli.test.ts` runs the real CLI against `test/fixtures/`, `test/render.test.ts` tests the output functions.
-- The fixtures are plain objects shaped like a built config, so Payload is not a dependency. Join fields, shared blocks, richText features and plugin replay are covered by fixtures.
-- Not tested: Payload versions below 3.88, custom Lexical features, Windows paths with spaces, join fields and shared blocks in a real Payload project.
+- Most fixtures are plain objects shaped like a built config: fast, and easy to read. Join fields, shared blocks, richText features and plugin replay are covered there.
+- `test/fixtures/real-payload.config.ts` is built by Payload's real `buildConfig` (no database needed), with a join field, a shared block and Lexical features. It catches changes in Payload's built config shape. Payload, Lexical and React are dev dependencies, pinned to exact versions (Payload 3.94.0).
+- `.npmrc` sets `legacy-peer-deps=true`: Lexical lists Next.js as a peer, and installing it would grow `node_modules` from about 189 MB to 629 MB for nothing.
+- Not tested: Payload versions below 3.88, custom Lexical features, Windows paths with spaces.
 
 ## Demo GIF
 

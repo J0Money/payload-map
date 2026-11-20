@@ -127,7 +127,7 @@ Dotted arrows are `join` fields.
 
 ## Requirements
 
-- A Payload 3 project. Tested on Payload 3.88.0 and 3.92.1.
+- A Payload 3 project. Tested on Payload 3.88.0, 3.92.1 and 3.94.0.
 - Node.js. Tested on Node 24.
 
 ## Development

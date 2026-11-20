@@ -44,6 +44,27 @@ test('finds every relation, also nested, shared, join and richText fields', () =
   ])
 })
 
+test('reads a config built by real Payload, without a database', () => {
+  const { code, stdout, stderr } = runCli('--config', 'real-payload.config.ts', '--json')
+  assert.equal(code, 0, stderr)
+
+  const data = JSON.parse(stdout)
+  assert.deepEqual(data.collections, ['users', 'media', 'posts'])
+
+  // Payload decides the order of Lexical features, so compare sorted by field path.
+  const byField = (a: { field: string }, b: { field: string }) => a.field.localeCompare(b.field)
+  assert.deepEqual(data.relations.sort(byField), [
+    { from: 'posts', field: 'author', to: ['users'], kind: 'relationship' },
+    { from: 'posts', field: 'content{blocks}<mediaBlock>.media', to: ['media'], kind: 'upload', richText: true },
+    { from: 'posts', field: 'content{link}.doc', to: ['posts'], kind: 'relationship', richText: true },
+    // Payload's relationship feature leaves out upload collections by default.
+    { from: 'posts', field: 'content{relationship}', to: ['users', 'posts'], kind: 'relationship', richText: true },
+    { from: 'posts', field: 'content{upload}', to: ['media'], kind: 'upload', richText: true },
+    { from: 'posts', field: 'layout<cta>.link', to: ['posts'], kind: 'relationship' },
+    { from: 'users', field: 'posts', to: ['posts'], kind: 'join' },
+  ])
+})
+
 test('detects plugin collections and skips a plugin that throws on replay', () => {
   const data = JSON.parse(runCli('--config', 'blog.config.ts', '--json', '--all').stdout)
   assert.deepEqual(data.pluginCollections, ['redirects'])

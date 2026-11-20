@@ -31,7 +31,11 @@
     "tsx": "^4.23.15"
   },
   "devDependencies": {
+    "@payloadcms/richtext-lexical": "3.94.0",
     "@types/node": "^26.6.6",
+    "payload": "3.94.0",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
     "typescript": "^7.0.2"
   }
 }
