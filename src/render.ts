@@ -33,65 +33,106 @@ const sourcesOf = (data: ExtractResult) => [
   ...data.globals.map((slug) => `global:${slug}`),
 ]
 
-type Pair = { to: string; fields: Relation[] }
+// One line in the tree: a collection and the fields behind it. In the normal tree the
+// name is a target, in the --to tree it is a source.
+type Group = { name: string; fields: Relation[] }
 
 const bold = (text: string) => styleText('bold', text)
 const dim = (text: string) => styleText('dim', text)
 
-// Groups the relations of one source by target, so 12 fields pointing at
-// "media" become one line instead of twelve.
-function pairsFor(source: string, relations: Relation[]): Pair[] {
-  const byTarget = new Map<string, Relation[]>()
+// Groups relations by a key, so 12 fields pointing at "media" become one line
+// instead of twelve. Most fields first.
+function groupBy(relations: Relation[], keysOf: (relation: Relation) => string[]): Group[] {
+  const groups = new Map<string, Relation[]>()
   for (const relation of relations) {
-    if (relation.from !== source) continue
-    for (const to of relation.to) {
-      byTarget.set(to, [...(byTarget.get(to) ?? []), relation])
-    }
+    for (const key of keysOf(relation)) groups.set(key, [...(groups.get(key) ?? []), relation])
   }
-  return [...byTarget]
-    .map(([to, fields]) => ({ to, fields }))
-    .sort((a, b) => b.fields.length - a.fields.length || a.to.localeCompare(b.to))
+  return [...groups]
+    .map(([name, fields]) => ({ name, fields }))
+    .sort((a, b) => b.fields.length - a.fields.length || a.name.localeCompare(b.name))
 }
+
+const targetsOf = (source: string, relations: Relation[]) =>
+  groupBy(
+    relations.filter((relation) => relation.from === source),
+    (relation) => relation.to,
+  )
 
 const plural = (count: number, word: string) => `${count} ${count === 1 ? word : `${word}s`}`
 
-// "3 fields, 1 join, rich text": the count, plus how many of the fields are joins or live
-// in richText. A tag without a number means all fields have it.
-function pairInfo(pair: Pair): string {
-  const count = pair.fields.length
+// "3 fields, 1 join, rich text": the count, plus how many of the fields are joins, live
+// in richText, or may point at any collection. A tag without a number means all fields have it.
+function groupInfo(group: Group): string {
+  const count = group.fields.length
   const tag = (matching: number, label: string) =>
     matching === 0 ? [] : [matching === count ? label : `${matching} ${label}`]
+  // On an "any collection" line this tag would only repeat the name.
+  const anyCount =
+    group.name === ANY ? 0 : group.fields.filter((field) => field.to.includes(ANY)).length
   return [
     plural(count, 'field'),
-    ...tag(pair.fields.filter((field) => field.kind === 'join').length, 'join'),
-    ...tag(pair.fields.filter((field) => field.richText).length, 'rich text'),
+    ...tag(group.fields.filter((field) => field.kind === 'join').length, 'join'),
+    ...tag(group.fields.filter((field) => field.richText).length, 'rich text'),
+    ...tag(anyCount, 'any collection'),
   ].join(', ')
 }
 
-const pairLabel = (pair: Pair) => `${nameOf(pair.to)} ${dim(`(${pairInfo(pair)})`)}`
+const groupLabel = (group: Group) => `${nameOf(group.name)} ${dim(`(${groupInfo(group)})`)}`
+
+// The branches under one heading, with field paths when --details is on.
+function branches(groups: Group[], details: boolean): string[] {
+  return groups.flatMap((group, index) => {
+    const last = index === groups.length - 1
+    const indent = last ? '   ' : '│  '
+    return [
+      `${last ? '└─' : '├─'} ${groupLabel(group)}`,
+      ...(details ? group.fields.map((field) => dim(`${indent}  ${field.field}`)) : []),
+    ]
+  })
+}
+
+// Keeps only relations that can point at one collection, and narrows their targets to it.
+// A relation allowed to point at any collection ("*") can point at this one too, so it
+// stays, still marked "*".
+// Collections and globals that point at nothing are dropped too, so --mermaid and --json
+// only show what is involved.
+export function pointingAt(data: ExtractResult, slug: string): ExtractResult {
+  const relations = data.relations
+    .filter((relation) => relation.to.includes(slug) || relation.to.includes(ANY))
+    .map((relation) => ({ ...relation, to: relation.to.includes(slug) ? [slug] : [ANY] }))
+  const isSource = (from: string) => relations.some((relation) => relation.from === from)
+  return {
+    ...data,
+    collections: data.collections.filter((name) => name === slug || isSource(name)),
+    globals: data.globals.filter((name) => isSource(`global:${name}`)),
+    relations,
+  }
+}
+
+// The --to tree: one collection on top, everything that points at it below.
+// Expects data that has been through pointingAt.
+export function renderIncoming(data: ExtractResult, slug: string, options: { details: boolean }): string {
+  if (data.relations.length === 0) return `Nothing points at ${bold(slug)}.`
+  const sources = groupBy(data.relations, (relation) => [relation.from])
+  return [
+    `${bold(slug)} ${dim('is pointed at by')}`,
+    ...branches(sources, options.details),
+    '',
+    dim(`${plural(sources.length, 'source')}, ${plural(data.relations.length, 'field')}`),
+  ].join('\n')
+}
 
 export function render(data: ExtractResult, options: { details: boolean }): string {
   const lines: string[] = []
   const withoutRelations: string[] = []
 
   for (const source of sourcesOf(data)) {
-    const pairs = pairsFor(source, data.relations)
-    if (pairs.length === 0) {
+    const targets = targetsOf(source, data.relations)
+    if (targets.length === 0) {
       withoutRelations.push(source)
       continue
     }
-
-    lines.push(bold(source))
-    pairs.forEach((pair, index) => {
-      const last = index === pairs.length - 1
-      lines.push(`${last ? '└─' : '├─'} ${pairLabel(pair)}`)
-
-      if (options.details) {
-        const indent = last ? '   ' : '│  '
-        for (const field of pair.fields) lines.push(dim(`${indent}  ${field.field}`))
-      }
-    })
-    lines.push('')
+    lines.push(bold(source), ...branches(targets, options.details), '')
   }
 
   if (withoutRelations.length > 0) {
@@ -120,13 +161,13 @@ export function renderMermaid(data: ExtractResult): string {
 
   for (const source of sourcesOf(data)) {
     nodes.add(source)
-    for (const pair of pairsFor(source, data.relations)) {
-      nodes.add(pair.to)
-      const label = pairInfo(pair)
-      // A dotted arrow marks a pair made only of join fields (the reverse side of a relation).
-      const allJoins = pair.fields.every((field) => field.kind === 'join')
+    for (const target of targetsOf(source, data.relations)) {
+      nodes.add(target.name)
+      const label = groupInfo(target)
+      // A dotted arrow marks a line made only of join fields (the reverse side of a relation).
+      const allJoins = target.fields.every((field) => field.kind === 'join')
       const arrow = allJoins ? `-. "${label}" .->` : `-->|"${label}"|`
-      edges.push(`  ${mermaidId(source)} ${arrow} ${mermaidId(pair.to)}`)
+      edges.push(`  ${mermaidId(source)} ${arrow} ${mermaidId(target.name)}`)
     }
   }
 

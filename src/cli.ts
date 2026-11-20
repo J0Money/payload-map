@@ -4,8 +4,11 @@ import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parseArgs } from 'node:util'
 import {
+  pointingAt,
   render,
+  renderIncoming,
   renderMermaid,
   withoutPlugins,
   withoutRichText,
@@ -17,16 +20,35 @@ const fail = (message: string, code = 1): never => {
   process.exit(code)
 }
 
+// 0. Read the flags. parseArgs (built into Node) handles values like "--to media" and
+// rejects unknown flags, so a typo such as --detials gives an error instead of being ignored.
+function readFlags() {
+  try {
+    return parseArgs({
+      options: {
+        config: { type: 'string' },
+        to: { type: 'string' },
+        details: { type: 'boolean' },
+        json: { type: 'boolean' },
+        mermaid: { type: 'boolean' },
+        all: { type: 'boolean' },
+        'no-rich-text': { type: 'boolean' },
+      },
+    }).values
+  } catch (error) {
+    return fail(`${(error as Error).message}\nSee the README for all options.`)
+  }
+}
+
+const flags = readFlags()
+
 // The user's project is the folder the command is run from.
 const projectRoot = process.cwd()
 
 // 1. Find the config. An explicit flag wins over the env variable, which wins over defaults.
 function findConfig(): string {
-  const flagIndex = process.argv.indexOf('--config')
-  if (flagIndex !== -1) {
-    const value = process.argv[flagIndex + 1]
-    if (!value) fail('--config needs a path, for example: --config src/payload.config.ts')
-    const fromFlag = path.resolve(projectRoot, value)
+  if (flags.config) {
+    const fromFlag = path.resolve(projectRoot, flags.config)
     if (!existsSync(fromFlag)) fail(`Config not found: ${fromFlag}`)
     return fromFlag
   }
@@ -95,11 +117,21 @@ child.on('close', (code) => {
     )
   }
 
-  const flag = (name: string) => process.argv.includes(name)
-  let data = flag('--all') ? result! : withoutPlugins(result!)
-  if (flag('--no-rich-text')) data = withoutRichText(data)
+  let data = flags.all ? result! : withoutPlugins(result!)
+  if (flags['no-rich-text']) data = withoutRichText(data)
 
-  if (flag('--json')) console.log(JSON.stringify(data, null, 2))
-  else if (flag('--mermaid')) console.log(renderMermaid(data))
-  else console.log(render(data, { details: flag('--details') }))
+  // --to narrows everything (tree, --json and --mermaid) to what points at one collection.
+  const to = flags.to
+  if (to !== undefined) {
+    if (!result!.collections.includes(to)) {
+      fail(`Unknown collection: ${to}\nCollections: ${result!.collections.join(', ')}`)
+    }
+    data = pointingAt(data, to)
+  }
+
+  const details = flags.details ?? false
+  if (flags.json) console.log(JSON.stringify(data, null, 2))
+  else if (flags.mermaid) console.log(renderMermaid(data))
+  else if (to !== undefined) console.log(renderIncoming(data, to, { details }))
+  else console.log(render(data, { details }))
 })

@@ -48,6 +48,7 @@ It looks for the config in this order:
 | --- | --- |
 | `--config <path>` | Path to your Payload config |
 | `--details` | Show which fields make up each relation |
+| `--to <collection>` | Show only what points at one collection |
 | `--all` | Include collections added by plugins (redirects, forms, search and so on) |
 | `--mermaid` | Print a [Mermaid](https://mermaid.js.org/) diagram instead of a tree |
 | `--json` | Print the raw data as JSON |
@@ -71,6 +72,30 @@ pages
 ```
 
 `layout<hero>.image` means: the `image` field inside the `hero` block of the `layout` field.
+
+### Who points at a collection?
+
+Before you rename or delete a collection, you want to know what depends on it. `--to` turns the map around:
+
+```sh
+npx payload-map --to media --details
+```
+
+```
+media is pointed at by
+├─ posts (4 fields, 3 rich text, 1 any collection)
+│    details.cover
+│    body{blocks}<mediaBlock>.media
+│    body{upload}
+│    body{relationship}
+└─ pages (2 fields)
+     layout<hero>.image
+     meta.image
+
+2 sources, 6 fields
+```
+
+Fields that may point at any collection are counted too, because they can point at this one. `--to` also works with `--json` and `--mermaid`.
 
 ### Rich text
 

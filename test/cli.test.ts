@@ -83,6 +83,35 @@ test('drops richText relations with --no-rich-text', () => {
   assert.equal(data.relations.length, 10)
 })
 
+test('--to keeps only what points at one collection, including "any collection" fields', () => {
+  const data = JSON.parse(runCli('--config', 'blog.config.ts', '--json', '--all', '--to', 'media').stdout)
+  assert.deepEqual(data.collections, ['media', 'pages', 'posts'])
+  assert.deepEqual(
+    data.relations.map((relation: { field: string; to: string[] }) => `${relation.field} -> ${relation.to}`),
+    [
+      'layout<hero>.image -> media',
+      'meta.image -> media',
+      'details.cover -> media',
+      'body{blocks}<mediaBlock>.media -> media',
+      'body{upload} -> media',
+      'body{relationship} -> *',
+    ],
+  )
+})
+
+test('reports an unknown collection for --to', () => {
+  const { code, stderr } = runCli('--config', 'blog.config.ts', '--to', 'nope')
+  assert.equal(code, 1)
+  assert.match(stderr, /Unknown collection: nope/)
+  assert.match(stderr, /Collections: users, media, pages/)
+})
+
+test('reports an unknown flag instead of ignoring it', () => {
+  const { code, stderr } = runCli('--config', 'blog.config.ts', '--detials')
+  assert.equal(code, 1)
+  assert.match(stderr, /Unknown option '--detials'/)
+})
+
 test('reports a missing config with the paths it tried', () => {
   const { code, stderr } = runCli()
   assert.equal(code, 1)

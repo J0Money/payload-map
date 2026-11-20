@@ -50,7 +50,9 @@ Relations inside a richText field get `"richText": true` (the key is left out ot
 
 ## Behaviour
 
-- Flags: `--config <path>`, `--details` (field paths in the tree), `--json`, `--mermaid`, `--all` (include plugin collections), `--no-rich-text` (leave out richText relations).
+- Flags: `--config <path>`, `--details` (field paths in the tree), `--to <collection>` (what points at one collection), `--json`, `--mermaid`, `--all` (include plugin collections), `--no-rich-text` (leave out richText relations).
+- Flags are read with `node:util` `parseArgs`, so unknown flags and missing values are errors, not silently ignored.
+- `--to` narrows the data with `pointingAt` before any output, so it combines with `--json`, `--mermaid` and `--details`. Fields with `to: ["*"]` count as pointing at the collection and are tagged `any collection`.
 - richText relations are shown by default, tagged `rich text` (or `2 rich text` when only some of the fields are).
 - Plugin collections are hidden by default, as sources only. A user field pointing at one (for example `pages.form -> forms`) is still shown.
 - Join fields are shown, labelled `(join)` in the tree and as a dotted arrow in Mermaid.

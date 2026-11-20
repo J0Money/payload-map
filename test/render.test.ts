@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { stripVTControlCharacters } from 'node:util'
 import {
+  pointingAt,
   render,
+  renderIncoming,
   renderMermaid,
   withoutPlugins,
   withoutRichText,
@@ -89,6 +91,26 @@ test('withoutRichText drops relations inside richText fields', () => {
     withoutRichText(withRichText).relations.map((relation) => relation.field),
     ['cover'],
   )
+})
+
+test('renderIncoming lists the sources of one collection, counting "any collection" fields', () => {
+  const output = stripVTControlCharacters(
+    renderIncoming(pointingAt(withRichText, 'media'), 'media', { details: true }),
+  )
+  assert.match(
+    output,
+    /^media is pointed at by\n└─ posts \(3 fields, 2 rich text, 1 any collection\)\n {5}cover\n/,
+  )
+  assert.match(output, /1 source, 3 fields$/)
+})
+
+test('renderIncoming says so when nothing points at a collection', () => {
+  const output = stripVTControlCharacters(renderIncoming(pointingAt(data, 'forms'), 'forms', { details: false }))
+  assert.match(output, /^forms is pointed at by\n└─ pages \(1 field\)/)
+  // Without the richText fields nothing can point at posts (the "any collection" field is gone).
+  const onlyCover = withoutRichText(withRichText)
+  const empty = stripVTControlCharacters(renderIncoming(pointingAt(onlyCover, 'posts'), 'posts', { details: false }))
+  assert.equal(empty, 'Nothing points at posts.')
 })
 
 test('mermaid gives "*" a safe id and a readable label', () => {
