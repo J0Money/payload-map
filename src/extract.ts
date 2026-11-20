@@ -10,15 +10,36 @@ type Field = {
   tabs?: { name?: string; fields: Field[] }[]
   blocks?: Block[]
   blockReferences?: (string | Block)[]
+  editor?: { editorConfig?: { resolvedFeatureMap?: Map<string, Feature> } }
 }
 
 type Block = { slug: string; fields: Field[] }
+
+// A Lexical feature in a richText field. Only the props we read are typed.
+type Feature = {
+  sanitizedServerFeatureProps?: {
+    fields?: Field[] // link: the fields of the link drawer, including a "doc" relationship
+    blocks?: (string | Block)[] // blocks: blocks inside the editor
+    inlineBlocks?: (string | Block)[]
+    enabledCollectionSlugs?: string[] // upload and relationship: allowed collections
+    collections?: Record<string, { fields?: Field[] }> // upload: extra fields per collection
+  }
+}
 
 export type Relation = {
   from: string
   field: string
   to: string[]
   kind: 'relationship' | 'upload' | 'join'
+  richText?: true // set when the relation lives inside a richText (Lexical) field
+}
+
+// What stays the same during one walk through a collection or global.
+type Walk = {
+  from: string
+  sharedBlocks: Map<string, Block>
+  found: Relation[]
+  richText: boolean
 }
 
 const isInternal = (slug: string) => slug.startsWith('payload-')
@@ -27,43 +48,64 @@ const toArray = (value: string | string[]) => (Array.isArray(value) ? value : [v
 
 const joinPath = (prefix: string, name: string) => (prefix ? `${prefix}.${name}` : name)
 
+function addRelation(walk: Walk, field: string, to: string[], kind: Relation['kind']) {
+  const relation: Relation = { from: walk.from, field, to, kind }
+  if (walk.richText) relation.richText = true
+  walk.found.push(relation)
+}
+
+function collectBlocks(blocks: (string | Block)[], prefix: string, walk: Walk) {
+  for (const reference of blocks) {
+    // Shared blocks are listed by slug and defined once in config.blocks.
+    const block = typeof reference === 'string' ? walk.sharedBlocks.get(reference) : reference
+    if (block) collectRelations(block.fields, `${prefix}<${block.slug}>`, walk)
+  }
+}
+
+// Relations inside a richText field live in its Lexical features, not in normal fields.
+// The path marks the feature in braces, for example "content{blocks}<mediaBlock>.media".
+function collectRichText(field: Field, here: string, walk: Walk) {
+  const features = field.editor?.editorConfig?.resolvedFeatureMap
+  if (!features) return
+  const inside: Walk = { ...walk, richText: true }
+
+  for (const [key, feature] of features) {
+    const props = feature.sanitizedServerFeatureProps ?? {}
+    const prefix = `${here}{${key}}`
+    if (props.fields) collectRelations(props.fields, prefix, inside)
+    collectBlocks([...(props.blocks ?? []), ...(props.inlineBlocks ?? [])], prefix, inside)
+    if ((key === 'upload' || key === 'relationship') && props.enabledCollectionSlugs) {
+      addRelation(inside, prefix, props.enabledCollectionSlugs, key)
+    }
+    for (const extra of Object.values(props.collections ?? {})) {
+      collectRelations(extra.fields ?? [], prefix, inside)
+    }
+  }
+}
+
 // Walks a list of fields and collects every field that points at another collection.
-// Fields can be nested (groups, arrays, tabs, blocks), so the function calls itself.
-function collectRelations(
-  fields: Field[],
-  from: string,
-  prefix: string,
-  sharedBlocks: Map<string, Block>,
-  found: Relation[],
-) {
+// Fields can be nested (groups, arrays, tabs, blocks, richText), so the function calls itself.
+function collectRelations(fields: Field[], prefix: string, walk: Walk) {
   for (const field of fields) {
     const here = field.name ? joinPath(prefix, field.name) : prefix
 
     if (field.relationTo) {
-      const kind = field.type === 'upload' ? 'upload' : 'relationship'
-      found.push({ from, field: here, to: toArray(field.relationTo), kind })
+      addRelation(walk, here, toArray(field.relationTo), field.type === 'upload' ? 'upload' : 'relationship')
     }
 
     if (field.type === 'join' && field.collection) {
-      found.push({ from, field: here, to: toArray(field.collection), kind: 'join' })
+      addRelation(walk, here, toArray(field.collection), 'join')
     }
+
+    if (field.type === 'richText') collectRichText(field, here, walk)
 
     for (const tab of field.tabs ?? []) {
-      const tabPrefix = tab.name ? joinPath(prefix, tab.name) : prefix
-      collectRelations(tab.fields, from, tabPrefix, sharedBlocks, found)
+      collectRelations(tab.fields, tab.name ? joinPath(prefix, tab.name) : prefix, walk)
     }
 
-    for (const block of field.blocks ?? []) {
-      collectRelations(block.fields, from, `${here}<${block.slug}>`, sharedBlocks, found)
-    }
+    collectBlocks([...(field.blocks ?? []), ...(field.blockReferences ?? [])], here, walk)
 
-    // Shared blocks are listed by slug here and defined once in config.blocks.
-    for (const reference of field.blockReferences ?? []) {
-      const block = typeof reference === 'string' ? sharedBlocks.get(reference) : reference
-      if (block) collectRelations(block.fields, from, `${here}<${block.slug}>`, sharedBlocks, found)
-    }
-
-    if (field.fields) collectRelations(field.fields, from, here, sharedBlocks, found)
+    if (field.fields) collectRelations(field.fields, here, walk)
   }
 }
 
@@ -106,19 +148,27 @@ for (const plugin of config.plugins ?? []) {
 // 6. Collect relations from every collection and global.
 const found: Relation[] = []
 
+const walkFrom = (from: string): Walk => ({ from, sharedBlocks, found, richText: false })
+
 for (const collection of config.collections) {
   if (isInternal(collection.slug)) continue
-  collectRelations(collection.fields, collection.slug, '', sharedBlocks, found)
+  collectRelations(collection.fields, '', walkFrom(collection.slug))
 }
 
 for (const global of config.globals ?? []) {
-  collectRelations(global.fields, `global:${global.slug}`, '', sharedBlocks, found)
+  collectRelations(global.fields, '', walkFrom(`global:${global.slug}`))
 }
 
 // 7. Drop internal targets (fx media.folder -> payload-folders) and relations left empty.
+// A richText relation allowed to point at every collection (no limit set in the editor)
+// becomes "*", so the tree can show it as one "any collection" line.
+const pointsAtAll = (relation: Relation) =>
+  relation.richText === true && collections.every((slug) => relation.to.includes(slug))
+
 const relations = found
   .map((relation) => ({ ...relation, to: relation.to.filter((slug) => !isInternal(slug)) }))
   .filter((relation) => relation.to.length > 0)
+  .map((relation) => (pointsAtAll(relation) ? { ...relation, to: ['*'] } : relation))
 
 // 8. Print ONLY JSON to stdout, so cli.ts can parse it later.
 console.log(

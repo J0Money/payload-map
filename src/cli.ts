@@ -4,7 +4,13 @@ import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { render, renderMermaid, withoutPlugins, type ExtractResult } from './render.ts'
+import {
+  render,
+  renderMermaid,
+  withoutPlugins,
+  withoutRichText,
+  type ExtractResult,
+} from './render.ts'
 
 const fail = (message: string, code = 1): never => {
   console.error(message)
@@ -90,7 +96,8 @@ child.on('close', (code) => {
   }
 
   const flag = (name: string) => process.argv.includes(name)
-  const data = flag('--all') ? result! : withoutPlugins(result!)
+  let data = flag('--all') ? result! : withoutPlugins(result!)
+  if (flag('--no-rich-text')) data = withoutRichText(data)
 
   if (flag('--json')) console.log(JSON.stringify(data, null, 2))
   else if (flag('--mermaid')) console.log(renderMermaid(data))

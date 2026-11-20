@@ -74,6 +74,57 @@ export default {
           fields: [{ name: 'cover', type: 'upload', relationTo: 'media' }],
         },
         { name: 'author', type: 'relationship', relationTo: 'users' },
+        {
+          // richText (Lexical): relations live in the editor's features, not in fields.
+          name: 'body',
+          type: 'richText',
+          editor: {
+            editorConfig: {
+              resolvedFeatureMap: new Map<string, object>([
+                ['bold', {}],
+                [
+                  'link',
+                  {
+                    sanitizedServerFeatureProps: {
+                      fields: [{ name: 'doc', type: 'relationship', relationTo: ['pages', 'posts'] }],
+                    },
+                  },
+                ],
+                [
+                  'blocks',
+                  {
+                    sanitizedServerFeatureProps: {
+                      blocks: [
+                        {
+                          slug: 'mediaBlock',
+                          fields: [{ name: 'media', type: 'upload', relationTo: 'media' }],
+                        },
+                      ],
+                    },
+                  },
+                ],
+                ['upload', { sanitizedServerFeatureProps: { enabledCollectionSlugs: ['media'] } }],
+                [
+                  'relationship',
+                  {
+                    // No limit set, so every collection is allowed: shown as "*".
+                    sanitizedServerFeatureProps: {
+                      enabledCollectionSlugs: [
+                        'users',
+                        'media',
+                        'pages',
+                        'posts',
+                        'payload-folders',
+                        'redirects',
+                        'search',
+                      ],
+                    },
+                  },
+                ],
+              ]),
+            },
+          },
+        },
       ],
     },
     {

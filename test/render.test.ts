@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { stripVTControlCharacters } from 'node:util'
-import { render, renderMermaid, withoutPlugins, type ExtractResult } from '../src/render.ts'
+import {
+  render,
+  renderMermaid,
+  withoutPlugins,
+  withoutRichText,
+  type ExtractResult,
+} from '../src/render.ts'
 
 // render() adds colors when the terminal supports them. Strip them so the
 // tests compare plain text, whatever terminal they run in.
@@ -59,5 +65,34 @@ test('mermaid uses safe ids, real labels and dotted arrows for joins', () => {
   assert.match(output, /^flowchart LR/)
   assert.match(output, /global_footer\["global:footer"\]/)
   assert.match(output, /pages -->\|"2 fields"\| media/)
-  assert.match(output, /media -\. "1 field" \.-> pages/)
+  assert.match(output, /media -\. "1 field, join" \.-> pages/)
+})
+
+const withRichText: ExtractResult = {
+  collections: ['posts', 'media'],
+  globals: [],
+  pluginCollections: [],
+  relations: [
+    { from: 'posts', field: 'cover', to: ['media'], kind: 'upload' },
+    { from: 'posts', field: 'body{upload}', to: ['media'], kind: 'upload', richText: true },
+    { from: 'posts', field: 'body{relationship}', to: ['*'], kind: 'relationship', richText: true },
+  ],
+}
+
+test('labels richText fields and shows "*" as any collection', () => {
+  const output = plain(withRichText)
+  assert.match(output, /posts\n├─ media \(2 fields, 1 rich text\)\n└─ any collection \(1 field, rich text\)/)
+})
+
+test('withoutRichText drops relations inside richText fields', () => {
+  assert.deepEqual(
+    withoutRichText(withRichText).relations.map((relation) => relation.field),
+    ['cover'],
+  )
+})
+
+test('mermaid gives "*" a safe id and a readable label', () => {
+  const output = renderMermaid(withRichText)
+  assert.match(output, /any_collection\["any collection"\]/)
+  assert.match(output, /posts -->\|"1 field, rich text"\| any_collection/)
 })

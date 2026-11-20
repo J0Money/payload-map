@@ -18,7 +18,7 @@ function runCli(...args: string[]) {
   return { code: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
-test('finds every relation, also nested, shared and join fields', () => {
+test('finds every relation, also nested, shared, join and richText fields', () => {
   const { code, stdout } = runCli('--config', 'blog.config.ts', '--json', '--all')
   assert.equal(code, 0)
 
@@ -34,6 +34,10 @@ test('finds every relation, also nested, shared and join fields', () => {
     { from: 'posts', field: 'related.doc', to: ['posts', 'pages'], kind: 'relationship' },
     { from: 'posts', field: 'details.cover', to: ['media'], kind: 'upload' },
     { from: 'posts', field: 'author', to: ['users'], kind: 'relationship' },
+    { from: 'posts', field: 'body{link}.doc', to: ['pages', 'posts'], kind: 'relationship', richText: true },
+    { from: 'posts', field: 'body{blocks}<mediaBlock>.media', to: ['media'], kind: 'upload', richText: true },
+    { from: 'posts', field: 'body{upload}', to: ['media'], kind: 'upload', richText: true },
+    { from: 'posts', field: 'body{relationship}', to: ['*'], kind: 'relationship', richText: true },
     { from: 'redirects', field: 'to', to: ['pages', 'posts'], kind: 'relationship' },
     { from: 'search', field: 'doc', to: ['posts'], kind: 'relationship' },
     { from: 'global:footer', field: 'nav.page', to: ['pages'], kind: 'relationship' },
@@ -49,6 +53,12 @@ test('hides plugin collections as sources unless --all is passed', () => {
   const data = JSON.parse(runCli('--config', 'blog.config.ts', '--json').stdout)
   assert.ok(!data.collections.includes('redirects'))
   assert.ok(!data.relations.some((relation: { from: string }) => relation.from === 'redirects'))
+  assert.equal(data.relations.length, 14)
+})
+
+test('drops richText relations with --no-rich-text', () => {
+  const data = JSON.parse(runCli('--config', 'blog.config.ts', '--json', '--no-rich-text').stdout)
+  assert.ok(!data.relations.some((relation: { richText?: true }) => relation.richText))
   assert.equal(data.relations.length, 10)
 })
 

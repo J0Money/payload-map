@@ -21,6 +21,7 @@ It finds:
 - fields nested in tabs, groups, arrays and blocks
 - shared blocks from `config.blocks` that are used through `blockReferences`
 - relations from globals
+- relations inside `richText` fields (Lexical links, blocks, uploads and relationships)
 
 Payload's own internal `payload-*` collections are left out.
 
@@ -48,6 +49,7 @@ It looks for the config in this order:
 | `--all` | Include collections added by plugins (redirects, forms, search and so on) |
 | `--mermaid` | Print a [Mermaid](https://mermaid.js.org/) diagram instead of a tree |
 | `--json` | Print the raw data as JSON |
+| `--no-rich-text` | Leave out relations inside `richText` fields |
 
 Colors are turned off when the output is piped to a file or another command, or when `NO_COLOR` is set.
 
@@ -67,6 +69,21 @@ pages
 ```
 
 `layout<hero>.image` means: the `image` field inside the `hero` block of the `layout` field.
+
+### Rich text
+
+A Lexical `richText` field can hold links, blocks, uploads and relationships, and each of them can point at other collections. These relations are shown too, marked `rich text`:
+
+```
+posts
+├─ media (3 fields, 2 rich text)
+├─ pages (2 fields, 1 rich text)
+├─ posts (2 fields, 1 rich text)
+├─ any collection (1 field, rich text)
+└─ users (1 field)
+```
+
+`any collection` means the editor feature has no limit, so it may point at every collection. In `--details` the editor feature is shown in braces, for example `content{blocks}<mediaBlock>.media` or `content{link}.doc`. Use `--no-rich-text` to hide these relations.
 
 ### Plugin collections
 

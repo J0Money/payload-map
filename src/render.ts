@@ -19,6 +19,15 @@ export function withoutPlugins(data: ExtractResult): ExtractResult {
   }
 }
 
+// Drops relations inside richText fields (the --no-rich-text flag).
+export function withoutRichText(data: ExtractResult): ExtractResult {
+  return { ...data, relations: data.relations.filter((relation) => !relation.richText) }
+}
+
+// extract.ts uses "*" for a richText relation that may point at every collection.
+const ANY = '*'
+const nameOf = (slug: string) => (slug === ANY ? 'any collection' : slug)
+
 const sourcesOf = (data: ExtractResult) => [
   ...data.collections,
   ...data.globals.map((slug) => `global:${slug}`),
@@ -46,13 +55,20 @@ function pairsFor(source: string, relations: Relation[]): Pair[] {
 
 const plural = (count: number, word: string) => `${count} ${count === 1 ? word : `${word}s`}`
 
-function pairLabel(pair: Pair): string {
+// "3 fields, 1 join, rich text": the count, plus how many of the fields are joins or live
+// in richText. A tag without a number means all fields have it.
+function pairInfo(pair: Pair): string {
   const count = pair.fields.length
-  const joins = pair.fields.filter((field) => field.kind === 'join').length
-  const parts = [plural(count, 'field')]
-  if (joins > 0) parts.push(joins === count ? 'join' : `${joins} join`)
-  return `${pair.to} ${dim(`(${parts.join(', ')})`)}`
+  const tag = (matching: number, label: string) =>
+    matching === 0 ? [] : [matching === count ? label : `${matching} ${label}`]
+  return [
+    plural(count, 'field'),
+    ...tag(pair.fields.filter((field) => field.kind === 'join').length, 'join'),
+    ...tag(pair.fields.filter((field) => field.richText).length, 'rich text'),
+  ].join(', ')
 }
+
+const pairLabel = (pair: Pair) => `${nameOf(pair.to)} ${dim(`(${pairInfo(pair)})`)}`
 
 export function render(data: ExtractResult, options: { details: boolean }): string {
   const lines: string[] = []
@@ -94,7 +110,8 @@ export function render(data: ExtractResult, options: { details: boolean }): stri
 
 // Mermaid node ids may only hold letters, digits and underscores ("global:header" may not),
 // so each node gets a safe id and keeps the real slug as its label.
-const mermaidId = (slug: string) => slug.replace(/[^a-zA-Z0-9_]/g, '_')
+const mermaidId = (slug: string) =>
+  slug === ANY ? 'any_collection' : slug.replace(/[^a-zA-Z0-9_]/g, '_')
 
 export function renderMermaid(data: ExtractResult): string {
   const lines = ['flowchart LR']
@@ -105,7 +122,7 @@ export function renderMermaid(data: ExtractResult): string {
     nodes.add(source)
     for (const pair of pairsFor(source, data.relations)) {
       nodes.add(pair.to)
-      const label = plural(pair.fields.length, 'field')
+      const label = pairInfo(pair)
       // A dotted arrow marks a pair made only of join fields (the reverse side of a relation).
       const allJoins = pair.fields.every((field) => field.kind === 'join')
       const arrow = allJoins ? `-. "${label}" .->` : `-->|"${label}"|`
@@ -113,6 +130,6 @@ export function renderMermaid(data: ExtractResult): string {
     }
   }
 
-  for (const node of nodes) lines.push(`  ${mermaidId(node)}["${node}"]`)
+  for (const node of nodes) lines.push(`  ${mermaidId(node)}["${nameOf(node)}"]`)
   return [...lines, ...edges].join('\n')
 }

@@ -35,6 +35,8 @@ Terminal CLI that reads a Payload CMS (v3) config and draws how its collections 
 
 `kind` is `relationship`, `upload` or `join` (join is the reverse side of a relation). Globals use `from: "global:<slug>"`. Nested fields use a path such as `layout<hero>.media`.
 
+Relations inside a richText field get `"richText": true` (the key is left out otherwise). Their path marks the Lexical feature in braces, for example `content{link}.doc` or `content{blocks}<mediaBlock>.media`. A richText relation that may point at every collection (no limit set in the editor) gets `"to": ["*"]`, shown as "any collection".
+
 `pluginCollections` is a subset of `collections`. The built config has no marker for plugin collections, so `extract.ts` runs each function in `config.plugins` again on `{ collections: [], globals: [] }` and records the slugs it adds. A plugin that throws during this replay is skipped, and its collections count as the user's own.
 
 ## Traps already found (keep handled)
@@ -44,10 +46,12 @@ Terminal CLI that reads a Payload CMS (v3) config and draws how its collections 
 3. `upload` fields also have `relationTo`. Check `relationTo`, not the field type.
 4. Join fields have `collection` and `on`, not `relationTo`.
 5. Payload adds internal `payload-*` collections. Filter them as sources AND as targets (for example `media.folder -> payload-folders`).
+6. richText relations live in the Lexical editor, not in fields: `field.editor.editorConfig.resolvedFeatureMap` (a Map), each feature's `sanitizedServerFeatureProps`. `link` has `fields` (with a `doc` relationship), `blocks` has `blocks` and `inlineBlocks`, `upload` and `relationship` have `enabledCollectionSlugs`, `upload` also has `collections` with extra fields. Seen on Payload 3.92.1.
 
 ## Behaviour
 
-- Flags: `--config <path>`, `--details` (field paths in the tree), `--json`, `--mermaid`, `--all` (include plugin collections).
+- Flags: `--config <path>`, `--details` (field paths in the tree), `--json`, `--mermaid`, `--all` (include plugin collections), `--no-rich-text` (leave out richText relations).
+- richText relations are shown by default, tagged `rich text` (or `2 rich text` when only some of the fields are).
 - Plugin collections are hidden by default, as sources only. A user field pointing at one (for example `pages.form -> forms`) is still shown.
 - Join fields are shown, labelled `(join)` in the tree and as a dotted arrow in Mermaid.
 - Colors come from `node:util` `styleText`, which turns them off when output is piped or `NO_COLOR` is set.
@@ -55,8 +59,8 @@ Terminal CLI that reads a Payload CMS (v3) config and draws how its collections 
 ## Tests
 
 - `npm test` (node:test via tsx). `test/cli.test.ts` runs the real CLI against `test/fixtures/`, `test/render.test.ts` tests the output functions.
-- The fixtures are plain objects shaped like a built config, so Payload is not a dependency. Join fields, shared blocks and plugin replay are covered by fixtures.
-- Not tested: Payload versions below 3.88, richText fields with custom lexical features, Windows paths with spaces, join fields and shared blocks in a real Payload project.
+- The fixtures are plain objects shaped like a built config, so Payload is not a dependency. Join fields, shared blocks, richText features and plugin replay are covered by fixtures.
+- Not tested: Payload versions below 3.88, custom Lexical features, Windows paths with spaces, join fields and shared blocks in a real Payload project.
 
 ## Demo GIF
 
