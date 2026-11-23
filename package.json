@@ -1,6 +1,6 @@
 {
   "name": "payload-map",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "See every relation in your Payload project in your terminal.",
   "bin": {
     "payload-map": "dist/cli.js"
