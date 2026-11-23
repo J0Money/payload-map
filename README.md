@@ -27,6 +27,17 @@ It finds:
 
 Payload's own internal `payload-*` collections are left out.
 
+### Why not just ask an AI?
+
+You can, and on a small project it will often get it right. `payload-map` gives you a different kind of answer:
+
+- **Complete, not a guess.** It reads the config Payload actually builds, after plugins and shared blocks are resolved, instead of reading your source files and inferring.
+- **The same answer every time.** Run it twice, get the same result. Easy to trust, easy to diff.
+- **Your code stays on your machine.** Nothing is sent anywhere.
+- **Fast and free.** Seconds, no tokens.
+
+They also work well together: an AI assistant can run `npx payload-map --json` and work from exact data.
+
 ## Usage
 
 Run it from the root of your Payload project:
