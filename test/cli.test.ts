@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
@@ -10,13 +13,42 @@ const tsxCli = createRequire(import.meta.url).resolve('tsx/cli')
 const cliPath = fileURLToPath(new URL('../src/cli.ts', import.meta.url))
 const fixtures = fileURLToPath(new URL('./fixtures/', import.meta.url))
 
-function runCli(...args: string[]) {
-  const result = spawnSync(process.execPath, [tsxCli, cliPath, ...args], {
-    cwd: fixtures,
-    encoding: 'utf8',
-  })
+function runCliIn(cwd: string, ...args: string[]) {
+  const result = spawnSync(process.execPath, [tsxCli, cliPath, ...args], { cwd, encoding: 'utf8' })
   return { code: result.status, stdout: result.stdout, stderr: result.stderr }
 }
+
+const runCli = (...args: string[]) => runCliIn(fixtures, ...args)
+
+test('works in a project folder with spaces, using the "@/" alias from its tsconfig', (t) => {
+  // Paths are passed on to the helper process and turned into file URLs, which is where
+  // spaces tend to break. Built at runtime, so the repo itself has no folder with spaces.
+  const temp = mkdtempSync(path.join(tmpdir(), 'payload map '))
+  t.after(() => rmSync(temp, { recursive: true, force: true }))
+  const project = path.join(temp, 'My Project (copy)')
+  mkdirSync(path.join(project, 'src', 'collections'), { recursive: true })
+  writeFileSync(
+    path.join(project, 'tsconfig.json'),
+    JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['./src/*'] } } }),
+  )
+  writeFileSync(path.join(project, 'src', 'collections', 'Media.ts'), "export const Media = { slug: 'media', fields: [] }\n")
+  writeFileSync(
+    path.join(project, 'src', 'payload.config.ts'),
+    [
+      "import { Media } from '@/collections/Media'",
+      'export default {',
+      "  collections: [Media, { slug: 'posts', fields: [{ name: 'cover', type: 'upload', relationTo: 'media' }] }],",
+      '  globals: [],',
+      '}',
+    ].join('\n'),
+  )
+
+  const { code, stdout, stderr } = runCliIn(project, '--json')
+  assert.equal(code, 0, stderr)
+  assert.deepEqual(JSON.parse(stdout).relations, [
+    { from: 'posts', field: 'cover', to: ['media'], kind: 'upload' },
+  ])
+})
 
 test('finds every relation, also nested, shared, join and richText fields', () => {
   const { code, stdout } = runCli('--config', 'blog.config.ts', '--json', '--all')

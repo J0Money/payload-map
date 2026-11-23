@@ -68,7 +68,8 @@ Relations inside a richText field get `"richText": true` (the key is left out ot
 - `test/fixtures/real-payload.config.ts` is built by Payload's real `buildConfig` (no database needed), with a join field, a shared block and Lexical features. It catches changes in Payload's built config shape. Payload, Lexical and React are dev dependencies, pinned to exact versions (Payload 3.94.0).
 - `.npmrc` sets `legacy-peer-deps=true`: Lexical lists Next.js as a peer, and installing it would grow `node_modules` from about 189 MB to 629 MB for nothing.
 - CI (`.github/workflows/ci.yml`): `npm ci`, build and tests on Linux, Windows and macOS with Node 22 and 24, on every push to main and every pull request.
-- Not tested: Payload versions below 3.88, custom Lexical features, Windows paths with spaces.
+- Paths with spaces: `test/cli.test.ts` builds a project in a temp folder with spaces and parentheses, with a tsconfig `@/` alias. Checked by hand once (2026-11-23) on Windows: the packed tool installed in a folder with spaces, run directly and through its `.cmd` shim, also works.
+- Not tested: Payload versions below 3.88, custom Lexical features.
 
 ## Demo GIF
 
