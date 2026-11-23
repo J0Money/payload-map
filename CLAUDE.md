@@ -73,4 +73,6 @@ Relations inside a richText field get `"richText": true` (the key is left out ot
 
 - `demo/demo.gif` is recorded with VHS from `demo/demo.tape` on the generic shop config in `demo/src/payload.config.ts`.
 - Re-record after output changes: `npm run build`, then `vhs demo/demo.tape` from the repo root. Needs VHS, ttyd and ffmpeg.
+- Two scenes: the whole map, then `--to media`. The screen is cleared off camera between them.
+- `Set Framerate 10`: at the default rate Windows screen capture drops frames and the GIF plays faster than real time (11 s instead of 19 s). Check with ffprobe that the duration matches the sleeps.
 - The tape hides the setup: a `> ` prompt so no local paths show, and `Remove-Item Env:NO_COLOR` because VHS sets `NO_COLOR` and payload-map respects it.

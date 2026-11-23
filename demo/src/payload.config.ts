@@ -16,6 +16,21 @@ const ctaBlock = { slug: 'cta', fields: [link('link')] }
 
 const seo = { name: 'meta', type: 'group', fields: [image('image')] }
 
+// A Lexical richText field, shaped like Payload builds it: links to pages and products,
+// and images uploaded straight into the text.
+const richText = (name: string) => ({
+  name,
+  type: 'richText',
+  editor: {
+    editorConfig: {
+      resolvedFeatureMap: new Map<string, object>([
+        ['link', { sanitizedServerFeatureProps: { fields: [link('doc', ['pages', 'products'])] } }],
+        ['upload', { sanitizedServerFeatureProps: { enabledCollectionSlugs: ['media'] } }],
+      ]),
+    },
+  },
+})
+
 const breadcrumbs = (relationTo: string) => ({
   name: 'breadcrumbs',
   type: 'array',
@@ -68,6 +83,7 @@ export default {
             { label: 'SEO', fields: [seo] },
           ],
         },
+        richText('description'),
         { ...link('relatedProducts', 'products'), hasMany: true },
         { name: 'upsells', type: 'array', fields: [link('product', 'products')] },
         { name: 'reviews', type: 'join', collection: 'reviews', on: 'product' },
