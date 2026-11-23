@@ -53,6 +53,7 @@ It looks for the config in this order:
 | `--mermaid` | Print a [Mermaid](https://mermaid.js.org/) diagram instead of a tree |
 | `--json` | Print the raw data as JSON |
 | `--no-rich-text` | Leave out relations inside `richText` fields |
+| `--rich-text` | Include relations inside `richText` fields in `--mermaid` (left out there by default) |
 
 Colors are turned off when the output is piped to a file or another command, or when `NO_COLOR` is set.
 
@@ -139,7 +140,7 @@ posts
 └─ users (1 field)
 ```
 
-`any collection` means the editor feature has no limit, so it may point at every collection. In `--details` the editor feature is shown in braces, for example `content{blocks}<mediaBlock>.media` or `content{link}.doc`. Use `--no-rich-text` to hide these relations.
+`any collection` means the editor feature has no limit, so it may point at every collection. In `--details` the editor feature is shown in braces, for example `content{blocks}<mediaBlock>.media` or `content{link}.doc`. Use `--no-rich-text` to hide these relations. In `--mermaid` they are hidden by default (see [Mermaid](#mermaid)).
 
 ### Plugin collections
 
@@ -174,6 +175,14 @@ flowchart LR
 ```
 
 Dotted arrows are `join` fields.
+
+Relations inside `richText` fields are left out of the diagram by default. One link field in the editor can point at almost every collection, and in a real project that easily adds dozens of arrows that only say "this field may link to anything". The diagram says how many it left out in a comment, which Mermaid does not draw:
+
+```
+%% 4 rich text fields left out. Add --rich-text to include them.
+```
+
+Add `--rich-text` to draw them anyway.
 
 ## How it works
 

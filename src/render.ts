@@ -181,8 +181,14 @@ export function render(
 const mermaidId = (slug: string) =>
   slug === ANY ? 'any_collection' : slug.replace(/[^a-zA-Z0-9_]/g, '_')
 
-export function renderMermaid(data: ExtractResult): string {
+// options.leftOutRichText: how many richText fields the caller removed. They are named in
+// a Mermaid comment (%%), which is not drawn, so nobody mistakes the diagram for the full map.
+export function renderMermaid(data: ExtractResult, options: { leftOutRichText?: number } = {}): string {
   const lines = ['flowchart LR']
+  const leftOut = options.leftOutRichText ?? 0
+  if (leftOut > 0) {
+    lines.push(`  %% ${plural(leftOut, 'rich text field')} left out. Add --rich-text to include them.`)
+  }
   const nodes = new Set<string>()
   const edges: string[] = []
 

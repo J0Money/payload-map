@@ -36,6 +36,7 @@ function readArgs() {
         json: { type: 'boolean' },
         mermaid: { type: 'boolean' },
         all: { type: 'boolean' },
+        'rich-text': { type: 'boolean' },
         'no-rich-text': { type: 'boolean' },
       },
     })
@@ -45,6 +46,13 @@ function readArgs() {
 }
 
 const { values: flags, positionals: sources } = readArgs()
+
+if (flags['rich-text'] && flags['no-rich-text']) fail('Use --rich-text or --no-rich-text, not both.')
+
+// richText relations are shown by default, except in --mermaid: one Lexical link field can
+// point at almost every collection, and a diagram with that many arrows cannot be read.
+// A tree is a list, so it stays readable however many relations there are.
+const showRichText = flags['rich-text'] || (!flags['no-rich-text'] && !flags.mermaid)
 
 // The user's project is the folder the command is run from.
 const projectRoot = process.cwd()
@@ -122,11 +130,7 @@ child.on('close', (code) => {
   }
 
   // A collection named on the command line is shown even if a plugin added it.
-  let data = flags.all || sources.length > 0 ? result! : withoutPlugins(result!)
-  if (flags['no-rich-text']) data = withoutRichText(data)
-
-  // Worked out on the whole map, before the filters below remove relations.
-  const unconnected = notConnected(data)
+  const all = flags.all || sources.length > 0 ? result! : withoutPlugins(result!)
 
   if (sources.length > 0) {
     const known = [...result!.collections, ...result!.globals.map((slug) => `global:${slug}`)]
@@ -134,21 +138,33 @@ child.on('close', (code) => {
     if (unknown.length > 0) {
       fail(`Unknown collection or global: ${unknown.join(', ')}\nAvailable: ${known.join(', ')}`)
     }
-    data = fromSources(data, sources)
   }
 
-  // --to narrows everything (tree, --json and --mermaid) to what points at one collection.
   const to = flags.to
-  if (to !== undefined) {
-    if (!result!.collections.includes(to)) {
-      fail(`Unknown collection: ${to}\nCollections: ${result!.collections.join(', ')}`)
-    }
-    data = pointingAt(data, to)
+  if (to !== undefined && !result!.collections.includes(to)) {
+    fail(`Unknown collection: ${to}\nCollections: ${result!.collections.join(', ')}`)
   }
+
+  // The named sources, then --to, which narrows everything (tree, --json and --mermaid)
+  // to what points at one collection.
+  const narrow = (data: ExtractResult) => {
+    if (sources.length > 0) data = fromSources(data, sources)
+    if (to !== undefined) data = pointingAt(data, to)
+    return data
+  }
+
+  const whole = showRichText ? all : withoutRichText(all)
+  // Worked out on the whole map, before narrow removes relations.
+  const unconnected = notConnected(whole)
+  const data = narrow(whole)
+  // Counted on the narrowed view, so the number matches what the diagram leaves out.
+  const leftOutRichText = showRichText
+    ? 0
+    : narrow(all).relations.filter((relation) => relation.richText).length
 
   const details = flags.details ?? false
   if (flags.json) console.log(JSON.stringify(data, null, 2))
-  else if (flags.mermaid) console.log(renderMermaid(data))
+  else if (flags.mermaid) console.log(renderMermaid(data, { leftOutRichText }))
   else if (to !== undefined) console.log(renderIncoming(data, to, { details }))
   else console.log(render(data, { details, notConnected: unconnected }))
 })

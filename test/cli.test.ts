@@ -91,6 +91,25 @@ test('drops richText relations with --no-rich-text', () => {
   assert.equal(data.relations.length, 10)
 })
 
+test('leaves richText relations out of --mermaid unless --rich-text is passed', () => {
+  const diagram = runCli('--config', 'blog.config.ts', '--mermaid').stdout
+  assert.doesNotMatch(diagram, /any_collection/)
+  assert.match(diagram, /%% 4 rich text fields left out\. Add --rich-text to include them\./)
+
+  // Counted after --to: only the 3 richText fields that can point at media.
+  assert.match(runCli('--config', 'blog.config.ts', '--mermaid', '--to', 'media').stdout, /%% 3 rich text fields/)
+
+  const full = runCli('--config', 'blog.config.ts', '--mermaid', '--rich-text').stdout
+  assert.match(full, /posts -->\|"1 field, rich text"\| any_collection/)
+  assert.doesNotMatch(full, /%%/)
+})
+
+test('reports --rich-text and --no-rich-text together', () => {
+  const { code, stderr } = runCli('--config', 'blog.config.ts', '--rich-text', '--no-rich-text')
+  assert.equal(code, 1)
+  assert.match(stderr, /not both/)
+})
+
 test('--to keeps only what points at one collection, including "any collection" fields', () => {
   const data = JSON.parse(runCli('--config', 'blog.config.ts', '--json', '--all', '--to', 'media').stdout)
   assert.deepEqual(data.collections, ['media', 'pages', 'posts'])

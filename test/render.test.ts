@@ -140,3 +140,9 @@ test('mermaid gives "*" a safe id and a readable label', () => {
   assert.match(output, /any_collection\["any collection"\]/)
   assert.match(output, /posts -->\|"1 field, rich text"\| any_collection/)
 })
+
+test('mermaid names the richText fields the caller left out in a comment', () => {
+  const output = renderMermaid(withoutRichText(withRichText), { leftOutRichText: 2 })
+  assert.match(output, /^flowchart LR\n {2}%% 2 rich text fields left out\. Add --rich-text to include them\.\n/)
+  assert.doesNotMatch(renderMermaid(withRichText), /%%/)
+})
