@@ -148,11 +148,21 @@ Collections added by plugins are hidden as sources by default, so the map shows 
 
 ### Mermaid
 
+`--mermaid` prints the diagram as text (Mermaid source). The terminal cannot draw it, but GitHub and GitLab draw a ` ```mermaid ` block in any Markdown file. This writes a `RELATIONS.md` you can commit to your project:
+
 ```sh
-npx payload-map --mermaid > relations.mmd
+{ echo '```mermaid'; npx payload-map --mermaid; echo '```'; } > RELATIONS.md
 ```
 
-GitHub renders Mermaid in Markdown, so you can paste the output into a ` ```mermaid ` block in your own README or docs:
+In Windows PowerShell, use this instead, because `>` there may not write UTF-8:
+
+```powershell
+@('```mermaid') + (npx payload-map --mermaid) + '```' | Out-File RELATIONS.md -Encoding utf8
+```
+
+When your collections change, run it again and commit. The diff shows which relations were added or removed. To preview the file in VS Code, install a Mermaid extension for the Markdown preview.
+
+The result looks like this on GitHub:
 
 ```mermaid
 flowchart LR
