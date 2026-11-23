@@ -117,6 +117,7 @@ export default {
                         'payload-folders',
                         'redirects',
                         'search',
+                        'newsletter',
                       ],
                     },
                   },
@@ -137,6 +138,11 @@ export default {
       // Added by the second plugin, which throws on replay, so it counts as the user's own.
       slug: 'search',
       fields: [{ name: 'doc', type: 'relationship', relationTo: 'posts' }],
+    },
+    {
+      // Points at nothing and nothing points at it (the "*" field below does not count).
+      slug: 'newsletter',
+      fields: [{ name: 'email', type: 'email' }],
     },
   ],
   globals: [

@@ -133,21 +133,37 @@ export function renderIncoming(data: ExtractResult, slug: string, options: { det
   ].join('\n')
 }
 
-export function render(data: ExtractResult, options: { details: boolean }): string {
+// Collections that nothing points at and that point at nothing: maybe forgotten, maybe dead.
+// Fields that may point at any collection ("*") are not counted, otherwise one such field
+// would make every collection look connected.
+export function notConnected(data: ExtractResult): string[] {
+  const linked = new Set(data.relations.flatMap((relation) => [relation.from, ...relation.to]))
+  return data.collections.filter((slug) => !linked.has(slug))
+}
+
+// options.notConnected should come from the full map. Worked out from filtered data, a
+// collection could look unconnected only because the fields pointing at it were filtered away.
+export function render(
+  data: ExtractResult,
+  options: { details: boolean; notConnected?: string[] },
+): string {
   const lines: string[] = []
+  const unconnected = (options.notConnected ?? notConnected(data)).filter((slug) =>
+    data.collections.includes(slug),
+  )
   const withoutRelations: string[] = []
 
   for (const source of sourcesOf(data)) {
     const targets = targetsOf(source, data.relations)
-    if (targets.length === 0) {
-      withoutRelations.push(source)
-      continue
-    }
-    lines.push(bold(source), ...branches(targets, options.details), '')
+    if (targets.length > 0) lines.push(bold(source), ...branches(targets, options.details), '')
+    else if (!unconnected.includes(source)) withoutRelations.push(source)
   }
 
   if (withoutRelations.length > 0) {
     lines.push(dim(`No outgoing relations: ${withoutRelations.join(', ')}`))
+  }
+  if (unconnected.length > 0) {
+    lines.push(`Not connected to anything: ${unconnected.join(', ')}`)
   }
 
   lines.push(

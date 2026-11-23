@@ -51,6 +51,7 @@ Relations inside a richText field get `"richText": true` (the key is left out ot
 ## Behaviour
 
 - Flags: `--config <path>`, `--details` (field paths in the tree), `--to <collection>` (what points at one collection), `--json`, `--mermaid`, `--all` (include plugin collections), `--no-rich-text` (leave out richText relations).
+- The tree ends with "Not connected to anything:" for collections with no relations either way (`notConnected`). `to: ["*"]` does not count. `cli.ts` works it out on the whole map before `fromSources` and `pointingAt`, so filtering cannot make a collection look unconnected. Globals cannot be targets, so they only appear under "No outgoing relations".
 - Positional arguments are sources to show (`payload-map pages global:header`), filtered with `fromSources`. A named plugin collection is shown without `--all`. Unknown names are an error that lists the valid ones.
 - Flags are read with `node:util` `parseArgs`, so unknown flags and missing values are errors, not silently ignored.
 - `--to` narrows the data with `pointingAt` before any output, so it combines with `--json`, `--mermaid` and `--details`. Fields with `to: ["*"]` count as pointing at the collection and are tagged `any collection`.

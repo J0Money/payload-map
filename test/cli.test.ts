@@ -23,7 +23,15 @@ test('finds every relation, also nested, shared, join and richText fields', () =
   assert.equal(code, 0)
 
   const data = JSON.parse(stdout)
-  assert.deepEqual(data.collections, ['users', 'media', 'pages', 'posts', 'redirects', 'search'])
+  assert.deepEqual(data.collections, [
+    'users',
+    'media',
+    'pages',
+    'posts',
+    'redirects',
+    'search',
+    'newsletter',
+  ])
   assert.deepEqual(data.globals, ['footer'])
   assert.deepEqual(data.relations, [
     { from: 'users', field: 'posts', to: ['posts'], kind: 'join' },
@@ -106,6 +114,22 @@ test('shows only the collections named on the command line, plugin collections t
   assert.deepEqual(
     data.relations.map((relation: { from: string }) => relation.from),
     ['redirects', 'global:footer'],
+  )
+})
+
+test('names collections that are not connected to anything', () => {
+  const { stdout } = runCli('--config', 'blog.config.ts')
+  assert.match(stdout, /Not connected to anything: newsletter/)
+  // media points at nothing, but pages and posts point at it, so it is connected.
+  assert.match(stdout, /No outgoing relations: media\n/)
+})
+
+test('works out unconnected collections on the whole map, also when filtered', () => {
+  // Filtered to media alone, nothing seems to point at it, but on the whole map pages does.
+  assert.doesNotMatch(runCli('--config', 'blog.config.ts', 'media').stdout, /Not connected/)
+  assert.match(
+    runCli('--config', 'blog.config.ts', 'newsletter').stdout,
+    /Not connected to anything: newsletter/,
   )
 })
 

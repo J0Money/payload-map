@@ -73,6 +73,16 @@ pages
 
 `layout<hero>.image` means: the `image` field inside the `hero` block of the `layout` field.
 
+### Unconnected collections
+
+Below the tree, `payload-map` lists collections that point at nothing and that nothing points at:
+
+```
+Not connected to anything: newsletter
+```
+
+That can be fine (a log or a form inbox), but it can also be a collection nobody uses any more. Fields that may point at any collection (see [Rich text](#rich-text)) are not counted here, otherwise one such field would make every collection look connected.
+
 ### One collection
 
 In a big project the full map can fill the screen. Name one or more collections to see only those (globals as `global:<slug>`):

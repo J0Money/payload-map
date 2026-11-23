@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
   fromSources,
+  notConnected,
   pointingAt,
   render,
   renderIncoming,
@@ -124,6 +125,9 @@ child.on('close', (code) => {
   let data = flags.all || sources.length > 0 ? result! : withoutPlugins(result!)
   if (flags['no-rich-text']) data = withoutRichText(data)
 
+  // Worked out on the whole map, before the filters below remove relations.
+  const unconnected = notConnected(data)
+
   if (sources.length > 0) {
     const known = [...result!.collections, ...result!.globals.map((slug) => `global:${slug}`)]
     const unknown = sources.filter((source) => !known.includes(source))
@@ -146,5 +150,5 @@ child.on('close', (code) => {
   if (flags.json) console.log(JSON.stringify(data, null, 2))
   else if (flags.mermaid) console.log(renderMermaid(data))
   else if (to !== undefined) console.log(renderIncoming(data, to, { details }))
-  else console.log(render(data, { details }))
+  else console.log(render(data, { details, notConnected: unconnected }))
 })

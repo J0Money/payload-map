@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { stripVTControlCharacters } from 'node:util'
 import {
   fromSources,
+  notConnected,
   pointingAt,
   render,
   renderIncoming,
@@ -51,9 +52,14 @@ test('prints globals with their prefix and a summary line', () => {
   assert.match(output, /3 collections, 1 global, 6 relations$/)
 })
 
-test('collects collections without outgoing relations on one line', () => {
+test('collects sources without relations on one line each: no outgoing, or not connected at all', () => {
+  // With no relations at all, every collection is unconnected. Globals cannot be targets,
+  // so they are only ever "no outgoing".
   const output = plain({ ...data, relations: [] })
-  assert.match(output, /No outgoing relations: pages, media, forms, global:footer/)
+  assert.match(
+    output,
+    /No outgoing relations: global:footer\nNot connected to anything: pages, media, forms\n/,
+  )
 })
 
 test('withoutPlugins hides plugin collections as sources but keeps them as targets', () => {
@@ -97,6 +103,16 @@ test('withoutRichText drops relations inside richText fields', () => {
 test('fromSources keeps only the named sources and counts only them', () => {
   const output = plain(fromSources(data, ['pages']))
   assert.match(output, /^pages\n├─ media \(2 fields\)\n└─ forms \(1 field\)\n\n1 collection, 0 globals, 3 relations$/)
+})
+
+test('notConnected finds collections with no relations either way, ignoring "*"', () => {
+  assert.deepEqual(notConnected(data), [])
+  const lonely: ExtractResult = {
+    ...withRichText,
+    collections: [...withRichText.collections, 'newsletter'],
+  }
+  assert.deepEqual(notConnected(lonely), ['newsletter'])
+  assert.match(plain(lonely), /Not connected to anything: newsletter/)
 })
 
 test('renderIncoming lists the sources of one collection, counting "any collection" fields', () => {
