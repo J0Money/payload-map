@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
+import { getTsconfig } from 'get-tsconfig'
 import {
   fromSources,
   notConnected,
@@ -57,7 +58,26 @@ const showRichText = flags['rich-text'] || (!flags['no-rich-text'] && !flags.mer
 // The user's project is the folder the command is run from.
 const projectRoot = process.cwd()
 
-// 1. Find the config. An explicit flag wins over the env variable, which wins over defaults.
+// Payload projects point the "@payload-config" alias in tsconfig at their config, and Payload
+// itself looks there. Reading it finds configs outside the default places (monorepos, other
+// folders). get-tsconfig is what Payload uses too: tsconfig allows comments and "extends",
+// which JSON.parse cannot read.
+function configFromTsconfig(): string | undefined {
+  let tsconfig
+  try {
+    tsconfig = getTsconfig(projectRoot)
+  } catch {
+    return undefined // A broken tsconfig should not stop the other ways of finding the config.
+  }
+  const target = tsconfig?.config.compilerOptions?.paths?.['@payload-config']?.[0]
+  if (!tsconfig || !target) return undefined
+  // Alias targets are relative to baseUrl if it is set, otherwise to the tsconfig's folder.
+  const base = path.resolve(path.dirname(tsconfig.path), tsconfig.config.compilerOptions?.baseUrl ?? '')
+  return path.resolve(base, target)
+}
+
+// 1. Find the config. An explicit flag wins over the env variable, which wins over the
+// tsconfig alias, which wins over the default places. Same order as Payload's own lookup.
 function findConfig(): string {
   if (flags.config) {
     const fromFlag = path.resolve(projectRoot, flags.config)
@@ -67,6 +87,7 @@ function findConfig(): string {
 
   const candidates = [
     process.env.PAYLOAD_CONFIG_PATH,
+    configFromTsconfig(),
     'src/payload.config.ts',
     'payload.config.ts',
   ]

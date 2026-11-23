@@ -39,8 +39,11 @@ It looks for the config in this order:
 
 1. `--config <path>`
 2. the `PAYLOAD_CONFIG_PATH` environment variable
-3. `src/payload.config.ts`
-4. `payload.config.ts`
+3. the `@payload-config` alias in your `tsconfig.json`, the same place Payload itself looks
+4. `src/payload.config.ts`
+5. `payload.config.ts`
+
+So in most projects, also monorepos and projects with their config in another folder, you do not need `--config`.
 
 ### Options
 

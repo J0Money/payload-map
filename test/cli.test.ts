@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { test } from 'node:test'
+import { test, type TestContext } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 // These tests run the real CLI as a process, the same way a user would.
@@ -20,34 +20,73 @@ function runCliIn(cwd: string, ...args: string[]) {
 
 const runCli = (...args: string[]) => runCliIn(fixtures, ...args)
 
+// Writes a small project to a temp folder (deleted after the test) and returns its path.
+// Used for setups the fixtures folder cannot have: spaces in paths, its own tsconfig.
+function makeProject(t: TestContext, folder: string, files: Record<string, string>): string {
+  const temp = mkdtempSync(path.join(tmpdir(), 'payload map '))
+  t.after(() => rmSync(temp, { recursive: true, force: true }))
+  const project = path.join(temp, folder)
+  for (const [file, content] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(project, file)), { recursive: true })
+    writeFileSync(path.join(project, file), content)
+  }
+  return project
+}
+
+// A config with one collection, so a test can tell which config was loaded.
+const configWith = (slug: string) => `export default { collections: [{ slug: '${slug}', fields: [] }], globals: [] }\n`
+
 test('works in a project folder with spaces, using the "@/" alias from its tsconfig', (t) => {
   // Paths are passed on to the helper process and turned into file URLs, which is where
   // spaces tend to break. Built at runtime, so the repo itself has no folder with spaces.
-  const temp = mkdtempSync(path.join(tmpdir(), 'payload map '))
-  t.after(() => rmSync(temp, { recursive: true, force: true }))
-  const project = path.join(temp, 'My Project (copy)')
-  mkdirSync(path.join(project, 'src', 'collections'), { recursive: true })
-  writeFileSync(
-    path.join(project, 'tsconfig.json'),
-    JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['./src/*'] } } }),
-  )
-  writeFileSync(path.join(project, 'src', 'collections', 'Media.ts'), "export const Media = { slug: 'media', fields: [] }\n")
-  writeFileSync(
-    path.join(project, 'src', 'payload.config.ts'),
-    [
+  const project = makeProject(t, 'My Project (copy)', {
+    'tsconfig.json': JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['./src/*'] } } }),
+    'src/collections/Media.ts': "export const Media = { slug: 'media', fields: [] }\n",
+    'src/payload.config.ts': [
       "import { Media } from '@/collections/Media'",
       'export default {',
       "  collections: [Media, { slug: 'posts', fields: [{ name: 'cover', type: 'upload', relationTo: 'media' }] }],",
       '  globals: [],',
       '}',
     ].join('\n'),
-  )
+  })
 
   const { code, stdout, stderr } = runCliIn(project, '--json')
   assert.equal(code, 0, stderr)
   assert.deepEqual(JSON.parse(stdout).relations, [
     { from: 'posts', field: 'cover', to: ['media'], kind: 'upload' },
   ])
+})
+
+test('finds the config through "@payload-config" in tsconfig, also with comments and extends', (t) => {
+  const project = makeProject(t, 'monorepo', {
+    'tsconfig.json': '{\n  // Comments are allowed in tsconfig\n  "extends": "./tsconfig.base.json",\n}\n',
+    'tsconfig.base.json': JSON.stringify({
+      compilerOptions: { baseUrl: '.', paths: { '@payload-config': ['./apps/cms/payload.config.ts'] } },
+    }),
+    'apps/cms/payload.config.ts': configWith('fromAlias'),
+    // The alias wins over the default place.
+    'src/payload.config.ts': configWith('fromDefault'),
+  })
+  const { code, stdout, stderr } = runCliIn(project, '--json')
+  assert.equal(code, 0, stderr)
+  assert.deepEqual(JSON.parse(stdout).collections, ['fromAlias'])
+})
+
+test('resolves "@payload-config" from the tsconfig folder when there is no baseUrl', (t) => {
+  const project = makeProject(t, 'project', {
+    'tsconfig.json': JSON.stringify({ compilerOptions: { paths: { '@payload-config': ['./cms/config.ts'] } } }),
+    'cms/config.ts': configWith('fromAlias'),
+  })
+  assert.deepEqual(JSON.parse(runCliIn(project, '--json').stdout).collections, ['fromAlias'])
+})
+
+test('falls back to the default places when tsconfig cannot be read', (t) => {
+  const project = makeProject(t, 'project', {
+    'tsconfig.json': '{ "compilerOptions": { "paths": ',
+    'src/payload.config.ts': configWith('fromDefault'),
+  })
+  assert.deepEqual(JSON.parse(runCliIn(project, '--json').stdout).collections, ['fromDefault'])
 })
 
 test('finds every relation, also nested, shared, join and richText fields', () => {
